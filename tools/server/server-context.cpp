@@ -3869,7 +3869,7 @@ private:
                         }
                         proposed += std::to_string(tok);
                     }
-                    SLT_INF(slot, "MTP_TRACE proposal: n_past=%d sampled_anchor=%d proposed_ids=[%s]\\n",
+                    SLT_INF(slot, "MTP_TRACE proposal: n_past=%d sampled_anchor=%d proposed_ids=[%s]\n",
                             slot.prompt.n_tokens(), slot.sampled, proposed.c_str());
                 }
 
@@ -3886,7 +3886,7 @@ private:
                         }
                         confirmed += std::to_string(tok);
                     }
-                    SLT_INF(slot, "MTP_TRACE verification: proposed=%zu accepted_prefix=%zu confirmed_ids=[%s]\\n",
+                    SLT_INF(slot, "MTP_TRACE verification: proposed=%zu accepted_prefix=%zu confirmed_ids=[%s]\n",
                             n_draft, accepted.size() - 1, confirmed.c_str());
                 }
 
