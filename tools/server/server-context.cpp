@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <cinttypes>
 #include <exception>
 #include <iterator>
@@ -3871,6 +3872,12 @@ private:
                     }
                     SLT_INF(slot, "MTP_TRACE proposal: n_past=%d sampled_anchor=%d proposed_ids=[%s]\n",
                             slot.prompt.n_tokens(), slot.sampled, proposed.c_str());
+                    if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                        std::ofstream stream(trace_file, std::ios::app);
+                        stream << "MTP_TRACE proposal: n_past=" << slot.prompt.n_tokens()
+                               << " sampled_anchor=" << slot.sampled
+                               << " proposed_ids=[" << proposed << "]" << std::endl;
+                    }
                 }
 
                 auto accepted = common_sampler_sample_and_accept_n(slot.smpl.get(), slot.ctx_tgt, slot.spec_i_batch, slot.spec_draft);
@@ -3888,6 +3895,12 @@ private:
                     }
                     SLT_INF(slot, "MTP_TRACE verification: proposed=%zu accepted_prefix=%zu confirmed_ids=[%s]\n",
                             n_draft, accepted.size() - 1, confirmed.c_str());
+                    if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                        std::ofstream stream(trace_file, std::ios::app);
+                        stream << "MTP_TRACE verification: proposed=" << n_draft
+                               << " accepted_prefix=" << accepted.size() - 1
+                               << " confirmed_ids=[" << confirmed << "]" << std::endl;
+                    }
                 }
 
                 const uint32_t n_rollback = slot.spec_draft.size() + 1 - accepted.size();
