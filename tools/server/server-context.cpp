@@ -3858,10 +3858,37 @@ private:
                 common_sampler_ptr smpl_save(common_sampler_clone(slot.smpl.get()));
 
                 GGML_ASSERT(slot.spec_i_batch.size() == n_draft + 1);
+
+                // Diagnostic only: token IDs, never token text or logits. Enabled by --trace 2.
+                // Do not change the sampler, target context or draft acceptance path.
+                if (trace > 1) {
+                    std::string proposed;
+                    for (const auto tok : slot.spec_draft) {
+                        if (!proposed.empty()) {
+                            proposed += ",";
+                        }
+                        proposed += std::to_string(tok);
+                    }
+                    SLT_INF(slot, "MTP_TRACE proposal: n_past=%d sampled_anchor=%d proposed_ids=[%s]\\n",
+                            slot.prompt.n_tokens(), slot.sampled, proposed.c_str());
+                }
+
                 auto accepted = common_sampler_sample_and_accept_n(slot.smpl.get(), slot.ctx_tgt, slot.spec_i_batch, slot.spec_draft);
                 slot.spec_i_batch.clear();
 
                 GGML_ASSERT(accepted.size() >= 1);
+
+                if (trace > 1) {
+                    std::string confirmed;
+                    for (const auto tok : accepted) {
+                        if (!confirmed.empty()) {
+                            confirmed += ",";
+                        }
+                        confirmed += std::to_string(tok);
+                    }
+                    SLT_INF(slot, "MTP_TRACE verification: proposed=%zu accepted_prefix=%zu confirmed_ids=[%s]\\n",
+                            n_draft, accepted.size() - 1, confirmed.c_str());
+                }
 
                 const uint32_t n_rollback = slot.spec_draft.size() + 1 - accepted.size();
 
