@@ -3830,6 +3830,15 @@ private:
                 populate_token_probs(slot, result, slot.task->params.post_sampling_probs, params_base.special, tok_idx);
             }
 
+            // Covers the non-speculative first token and any fallback/final token.
+            // The speculative output loop logs its own emitted tokens separately.
+            if (trace > 1) {
+                if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                    std::ofstream stream(trace_file, std::ios::app);
+                    stream << "MTP_TRACE emitted: id=" << result.tok << std::endl;
+                }
+            }
+
             if (!process_token(result, slot)) {
                 // release slot because of stop condition
                 slot.print_timings();
