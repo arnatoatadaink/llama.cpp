@@ -3990,6 +3990,15 @@ private:
 
                 slot.stats.n_gen += 1;
 
+                // Token emitted through the server's speculative output loop.
+                // Record after checkpoint/replay resolution, before process_token().
+                if (trace > 1) {
+                    if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                        std::ofstream stream(trace_file, std::ios::app);
+                        stream << "MTP_TRACE emitted: id=" << result.tok << std::endl;
+                    }
+                }
+
                 if (!process_token(result, slot)) {
                     slot.print_timings();
                     send_final_response(slot);
