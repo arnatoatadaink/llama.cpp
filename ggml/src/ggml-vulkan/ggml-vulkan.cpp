@@ -10129,7 +10129,7 @@ static void ggml_vk_mul_mat(ggml_backend_vk_context * ctx, vk_context& subctx, c
     const bool needs_split = dst->ne[2] == 1 && dst->ne[3] == 1 && nbytes > ctx->device->properties.limits.maxStorageBufferRange;
     // MTP-02G: bounded, opt-in PQ2_0 route trace; no GPU work or allocation changes.
     if (src0->type == GGML_TYPE_PQ2_0 && getenv("MTP02G_TRACE_PQ2")) {
-        static int route_samples = 0;
+        static thread_local int route_samples = 0;
         if (route_samples < 64) {
             ++route_samples;
             const bool vector_route = (dst->ne[1] == 1 ||
