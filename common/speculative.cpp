@@ -30,6 +30,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
+#include <fstream>
 #include <map>
 
 #define SPC_DBG(fmt, ...) LOG_DBG("spec %12.*s: " fmt, 12, __func__, __VA_ARGS__)
@@ -1065,6 +1066,12 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
 
                 // add drafted token for each sequence
                 const llama_token id = cur_p->data[0].id;
+                if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                    std::ofstream out(trace_file, std::ios::app);
+                    out << std::setprecision(9) << "MTP_TRACE draft_choice: seq=" << seq_id
+                        << " step=" << i << " id=" << id
+                        << " candidate_p=" << cur_p->data[0].p << std::endl;
+                }
 
                 // only collect very high-confidence draft tokens
                 if (cur_p->data[0].p < params.p_min) {
@@ -2754,6 +2761,33 @@ struct common_speculative_impl_draft_mtp : public common_speculative_impl {
 
                 auto * smpl = smpls[seq_id].get();
 
+                // Diagnostic read-only raw Draft logits. Do not mutate sampler state.
+                // seq/step/idx locate the selected MTP head and output row.
+                if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                    const int row = i_last[seq_id];
+                    const float * logits = llama_get_logits_ith(ctx_dft, row);
+                    if (logits) {
+                        const int32_t nv = llama_vocab_n_tokens(llama_model_get_vocab(llama_get_model(ctx_dft)));
+                        int32_t top1 = -1, top2 = -1;
+                        float v1 = -std::numeric_limits<float>::infinity();
+                        float v2 = -std::numeric_limits<float>::infinity();
+                        for (int32_t tok = 0; tok < nv; ++tok) {
+                            const float value = logits[tok];
+                            if (value > v1) {
+                                top2 = top1; v2 = v1;
+                                top1 = tok; v1 = value;
+                            } else if (value > v2) {
+                                top2 = tok; v2 = value;
+                            }
+                        }
+                        std::ofstream out(trace_file, std::ios::app);
+                        out << std::setprecision(9) << "MTP_TRACE draft_top2: seq=" << seq_id
+                            << " step=" << i << " row=" << row
+                            << " id1=" << top1 << " logit1=" << v1
+                            << " id2=" << top2 << " logit2=" << v2
+                            << " margin=" << (v1-v2) << std::endl;
+                    }
+                }
                 common_sampler_sample(smpl, ctx_dft, i_last[seq_id], true);
                 const float * h_row = llama_get_embeddings_nextn_ith(ctx_dft, i_last[seq_id]);
 
