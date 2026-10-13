@@ -2801,6 +2801,15 @@ struct common_speculative_impl_draft_mtp : public common_speculative_impl {
 
                 // add drafted token for each sequence
                 const llama_token id = cur_p->data[0].id;
+                // Record the MTP sampler's actual leading candidate, rather than
+                // assuming llama_get_logits_ith() is the sampler's active buffer.
+                if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                    std::ofstream out(trace_file, std::ios::app);
+                    out << std::setprecision(9) << "MTP_TRACE draft_choice: seq=" << seq_id
+                        << " step=" << i << " id=" << id
+                        << " candidate_p=" << cur_p->data[0].p << std::endl;
+                }
+
 
                 if (id < 0 || id >= llama_vocab_n_tokens(llama_model_get_vocab(llama_get_model(ctx_dft)))) {
                     SPC_ERR("draft candidate id %d out of vocab (seq_id=%d, step=%d, i_last=%d, cur_p.size=%zu) - dropping draft\n",
