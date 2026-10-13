@@ -10127,6 +10127,24 @@ static void ggml_vk_mul_mat(ggml_backend_vk_context * ctx, vk_context& subctx, c
     // This only supports batchsize == 1.
     const size_t nbytes = ggml_nbytes(src0);
     const bool needs_split = dst->ne[2] == 1 && dst->ne[3] == 1 && nbytes > ctx->device->properties.limits.maxStorageBufferRange;
+    // MTP-02G: bounded, opt-in PQ2_0 route trace; no GPU work or allocation changes.
+    if (src0->type == GGML_TYPE_PQ2_0 && getenv("MTP02G_TRACE_PQ2")) {
+        static int route_samples = 0;
+        if (route_samples < 64) {
+            ++route_samples;
+            const bool vector_route = (dst->ne[1] == 1 ||
+                (dst->ne[1] <= mul_mat_vec_max_cols && src1->ne[2] * src1->ne[3] == 1));
+            const char * route = needs_split ? "split_mm" :
+                ggml_vk_can_use_fwht(ctx, src1, dst) ? "fwht" :
+                vector_route ? "mmv" : "mmq";
+            std::fprintf(stderr,
+                "MTP02G_PQ2_ROUTE: sample=%d route=%s src0=%s src1_cols=%lld dst_cols=%lld coopmat=%d coopmat2=%d\n",
+                route_samples, route, src0->name, (long long) src1->ne[1],
+                (long long) dst->ne[1], (int) ctx->device->coopmat_support, (int) ctx->device->coopmat2);
+            std::fflush(stderr);
+        }
+    }
+
     if (needs_split) {
         // Choose the number of rows that can fit (and divide by two, to allow for any additional offsets)
         const uint32_t M_split = ctx->device->properties.limits.maxStorageBufferRange / (2 * src0->nb[1]);
