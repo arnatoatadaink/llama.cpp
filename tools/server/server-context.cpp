@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
+#include <limits>
+#include <iomanip>
 #include <cinttypes>
 #include <exception>
 #include <iterator>
@@ -38,6 +40,38 @@
 #endif
 
 constexpr int HTTP_POLLING_SECONDS = 1;
+
+static void mtp_trace_target_top2(llama_context * ctx, const int idx, const char * phase, const size_t ordinal) {
+    const char * file = std::getenv("MTP_TRACE_FILE");
+    if (!file || !*file) {
+        return;
+    }
+    const float * logits = llama_get_logits_ith(ctx, idx);
+    if (!logits) {
+        return;
+    }
+    const llama_model * model = llama_get_model(ctx);
+    const int32_t count = llama_vocab_n_tokens(llama_model_get_vocab(model));
+    int32_t first = -1, second = -1;
+    float v1 = -std::numeric_limits<float>::infinity();
+    float v2 = -std::numeric_limits<float>::infinity();
+    for (int32_t token = 0; token < count; ++token) {
+        const float value = logits[token];
+        if (value > v1) {
+            second = first; v2 = v1;
+            first = token; v1 = value;
+        } else if (value > v2) {
+            second = token; v2 = value;
+        }
+    }
+    std::ofstream out(file, std::ios::app);
+    out << std::setprecision(9) << "MTP_TRACE target_top2: phase=" << phase
+        << " ordinal=" << ordinal << " batch_idx=" << idx
+        << " id1=" << first << " logit1=" << v1
+        << " id2=" << second << " logit2=" << v2
+        << " margin=" << (v1-v2) << std::endl;
+}
+
 
 static common_speculative_output_limits server_output_limits(const common_params & params) {
     if (params.embedding ||
@@ -3801,6 +3835,9 @@ private:
             llama_token id;
             {
                 scoped_timer timer(t_sampl, n_sampl);
+                if (trace > 1) {
+                    mtp_trace_target_top2(slot.ctx_tgt, tok_idx, "ordinary", 0);
+                }
                 id = common_sampler_sample(slot.smpl.get(), slot.ctx_tgt, tok_idx);
             }
 
@@ -3889,6 +3926,11 @@ private:
                     }
                 }
 
+                if (trace > 1) {
+                    for (size_t i = 0; i < slot.spec_i_batch.size(); ++i) {
+                        mtp_trace_target_top2(slot.ctx_tgt, slot.spec_i_batch[i], "verification", i);
+                    }
+                }
                 auto accepted = common_sampler_sample_and_accept_n(slot.smpl.get(), slot.ctx_tgt, slot.spec_i_batch, slot.spec_draft);
                 slot.spec_i_batch.clear();
 
