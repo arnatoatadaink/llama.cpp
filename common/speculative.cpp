@@ -1064,6 +1064,20 @@ struct common_speculative_impl_draft_simple : public common_speculative_impl {
                             common_token_to_piece(ctx_dft, cur_p->data[k].id).c_str());
                 }
 
+                // Diagnostic: the actual post-sampler candidate distribution.
+                // No re-sampling and no mutation of sampler state.
+                if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
+                    std::ofstream out(trace_file, std::ios::app);
+                    out << std::setprecision(9) << "MTP_TRACE draft_candidates: seq=" << seq_id
+                        << " step=" << i << " row=" << i_last[seq_id]
+                        << " size=" << cur_p->size;
+                    for (size_t rank = 0; rank < std::min((size_t) 3, cur_p->size); ++rank) {
+                        out << " id" << rank << "=" << cur_p->data[rank].id
+                            << " p" << rank << "=" << cur_p->data[rank].p;
+                    }
+                    out << std::endl;
+                }
+
                 // add drafted token for each sequence
                 const llama_token id = cur_p->data[0].id;
                 if (const char * trace_file = std::getenv("MTP_TRACE_FILE")) {
