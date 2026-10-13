@@ -7400,7 +7400,7 @@ static void ggml_vk_print_gpu_info(size_t idx) {
 
     // MTP-02G: early backend initialization may precede GGML log callback setup.
     // Emit device capability selection to stderr without changing compute settings.
-    std::fprintf(stderr, "MTP02G_CAPS: gpu=%zu name=%s fp16=%s bf16=%d int_dot=%d subgroup=%zu matrix_cores=%s\\n",
+    std::fprintf(stderr, "MTP02G_CAPS: gpu=%zu name=%s fp16=%s bf16=%d int_dot=%d subgroup=%zu matrix_cores=%s\n",
                  idx, device_name.c_str(), fp16_str, (int) bfloat16_support, (int) integer_dot_product, subgroup_size, matrix_cores.c_str());
     std::fflush(stderr);
 
